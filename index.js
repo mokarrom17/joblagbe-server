@@ -29,21 +29,23 @@ async function run() {
     const applicationsCollection = client
       .db("JObLagvbe")
       .collection("applications");
+
     // jobs api
+    // =============================================================================================
+
+    //  Get all jobs (optionally filtered by HR email)
     app.get("/jobs", async (req, res) => {
-      
-        const email = req.query.email;
-        const query = {};
+      const email = req.query.email;
+      const query = {};
 
-        // Apply email filter if provided
-        if (email) {
-          query["company.hr_email"] = email;
-        }
+      // Apply email filter if provided
+      if (email) {
+        query["company.hr_email"] = email;
+      }
 
-        const cursor = jobsCollection.find(query); // pass the query here
-        const result = await cursor.toArray();
-        res.send(result);
-      
+      const cursor = jobsCollection.find(query); // pass the query here
+      const result = await cursor.toArray();
+      res.send(result);
     });
 
     // Could be done
@@ -54,14 +56,15 @@ async function run() {
       res.send(result)
     })*/
 
-    // Find specific job by id
+    // Get a single job by its MongoDB ObjectId
     app.get("/jobs/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await jobsCollection.findOne(query);
       res.send(result);
     });
-    //
+
+    // Add a new job to the database
     app.post("/jobs", async (req, res) => {
       const newJob = req.body;
       console.log(newJob);
@@ -69,7 +72,20 @@ async function run() {
       res.send(result);
     });
 
-    // Job application api
+    // ===================================================================
+    // APPLICATIONS API
+    // ===================================================================
+
+    // Get all applications for a specific job
+    app.get("/applications/job/:id", async (req, res) => {
+      const job_id = req.params.id;
+      console.log(job_id);
+      const query = { jobId: job_id };
+      const result = await applicationsCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    // Submit a new job application
     app.post("/applications", async (req, res) => {
       const application = req.body;
       console.log(application);
@@ -77,16 +93,35 @@ async function run() {
       res.send(result);
     });
 
-    // job application get api
+    // Update application status (e.g. Pending, Hired, Rejected)
+    app.patch("/applications/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(req.params.id) };
+      const updatedDoc = {
+        $set: {
+          status: req.body.status,
+        },
+      };
+      const result = await applicationsCollection.updateOne(filter, updatedDoc);
+      res.send(result);
+    });
+
+    // ==============================================================================================
+    // USER APPLICATIONS API
+    // ==============================================================================================
+
+      // Get all applications submitted by a specific user
     app.get("/my-applications", async (req, res) => {
       const email = req.query.email;
 
+      // Find applications by applicant email
       const query = {
         applicant: email,
       };
 
       const result = await applicationsCollection.find(query).toArray();
 
+       // Attach job details to each application
       for (const application of result) {
         const jobId = application.jobId;
         const jobQuery = { _id: new ObjectId(jobId) };
@@ -98,7 +133,12 @@ async function run() {
       res.send(result);
     });
 
-    // Send a ping to confirm a successful connection
+
+     // ==================================================================================
+    // MongoDB Health Check
+    // ===================================================================================
+
+    // Verify MongoDB connection
     await client.db("admin").command({ ping: 1 });
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
@@ -108,12 +148,24 @@ async function run() {
     // await client.close();
   }
 }
+// Start server and handle errors
 run().catch(console.dir);
 
+
+// ======================================================================================
+// Root Route
+// ======================================================================================
+
+// Default API route
 app.get("/", (req, res) => {
   res.send("Job lagbe cooking");
 });
 
+// ======================================================================================
+// Server Listener
+// ======================================================================================
+
+// Start listening on defined port
 app.listen(port, () => {
   console.log(`Career Code server is running on port ${port}`);
 });
