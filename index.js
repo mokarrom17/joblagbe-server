@@ -30,22 +30,37 @@ async function run() {
       .db("JObLagvbe")
       .collection("applications");
 
-    // jobs api
     // =============================================================================================
-
-    //  Get all jobs (optionally filtered by HR email)
+    // jobs api
     app.get("/jobs", async (req, res) => {
       const email = req.query.email;
       const query = {};
-
-      // Apply email filter if provided
       if (email) {
         query["company.hr_email"] = email;
       }
-
-      const cursor = jobsCollection.find(query); // pass the query here
+      const cursor = jobsCollection.find(query);
       const result = await cursor.toArray();
       res.send(result);
+    });
+    //  Get all jobs (optionally filtered by HR email)
+    app.get("/jobsByEmailAddress", async (req, res) => {
+      try {
+        const email = req.query.email;
+        console.log("HR email:", email);
+
+        const query = {};
+        if (email) {
+          query["company.hr_email"] = email;
+        }
+
+        const result = await jobsCollection.find(query).toArray();
+        console.log("Jobs found:", result.length);
+
+        res.send(result);
+      } catch (error) {
+        console.error("jobsByEmailAddress ERROR:", error);
+        res.status(500).send([]);
+      }
     });
 
     // Could be done
@@ -87,7 +102,7 @@ async function run() {
 
     // Submit a new job application
     app.post("/applications", async (req, res) => {
-      const application = req.body;
+      const application = req.body
       console.log(application);
       const result = await applicationsCollection.insertOne(application);
       res.send(result);
@@ -110,31 +125,28 @@ async function run() {
     // USER APPLICATIONS API
     // ==============================================================================================
 
-      // Get all applications submitted by a specific user
-    app.get("/my-applications", async (req, res) => {
+    // Get all applications submitted by a specific user
+    app.get("/applications", async (req, res) => {
       const email = req.query.email;
-
-      // Find applications by applicant email
       const query = {
         applicant: email,
       };
-
       const result = await applicationsCollection.find(query).toArray();
 
-       // Attach job details to each application
+      // bad way to aggregate data
       for (const application of result) {
         const jobId = application.jobId;
         const jobQuery = { _id: new ObjectId(jobId) };
-        const job = await jobsCollection.findOne({ _id: new ObjectId(jobId) });
+        const job = await jobsCollection.findOne(jobQuery);
         application.company = job.company;
         application.title = job.title;
-        application.logo = job.logo;
+        application.company_logo = job.company_logo;
       }
+
       res.send(result);
     });
 
-
-     // ==================================================================================
+    // ==================================================================================
     // MongoDB Health Check
     // ===================================================================================
 
@@ -150,7 +162,6 @@ async function run() {
 }
 // Start server and handle errors
 run().catch(console.dir);
-
 
 // ======================================================================================
 // Root Route
