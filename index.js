@@ -29,6 +29,7 @@ async function run() {
     const applicationsCollection = client
       .db("JObLagvbe")
       .collection("applications");
+    const blogsCollection = client.db("JObLagvbe").collection("blogs");
     // =============================================================================================
     // jobs api
     app.get("/jobs", async (req, res) => {
@@ -173,6 +174,38 @@ async function run() {
 
       res.send(result);
     });
+
+    // ===================================================================
+    // BLOGS API
+    // ===================================================================
+
+    app.get("/blogs", async (req, res) => {
+      try {
+        const blogs = await blogsCollection
+          .find()
+          .sort({ createdAt: -1 })
+          .toArray();
+        res.send(blogs);
+      } catch (error) {
+        res.status(500).send({ error: error.message });
+      }
+    });
+
+    // BlogDetails by Id
+    app.get("/blogs/:id", async (req, res) => {
+      try{
+        const id = req.params.id;
+        const blog = await blogsCollection.findOne({_id: new ObjectId(id)});
+
+        if(!blog){
+          return res.status(404).send({message : "Blog not found"})
+        }
+        res.send(blog);
+      }
+      catch(error){
+        res.status(500).send({error: error.message})
+      }
+    })
 
     // ==================================================================================
     // MongoDB Health Check
