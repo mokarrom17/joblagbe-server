@@ -29,7 +29,6 @@ async function run() {
     const applicationsCollection = client
       .db("JObLagvbe")
       .collection("applications");
-
     // =============================================================================================
     // jobs api
     app.get("/jobs", async (req, res) => {
@@ -46,17 +45,41 @@ async function run() {
     app.get("/jobsByEmailAddress", async (req, res) => {
       try {
         const email = req.query.email;
-        console.log("HR email:", email);
 
-        const query = {};
-        if (email) {
-          query["company.hr_email"] = email;
-        }
+        const jobs = await jobsCollection
+          .aggregate([
+            {
+              $match: {
+                "company.hr_email": email,
+              },
+            },
+            {
+              $lookup: {
+                from: "applications",
+                localField: "_id",
+                foreignField: "jobId",
+                as: "applications",
+              },
+            },
+            {
+              $addFields: {
+                application_count: { $size: "$applications" },
+              },
+            },
+            {
+              $project: {
+                title: 1,
+                jobLevel: 1,
+                jobType: 1,
+                deadline: 1,
+                company: 1,
+                application_count: 1,
+              },
+            },
+          ])
+          .toArray();
 
-        const result = await jobsCollection.find(query).toArray();
-        console.log("Jobs found:", result.length);
-
-        res.send(result);
+        res.send(jobs);
       } catch (error) {
         console.error("jobsByEmailAddress ERROR:", error);
         res.status(500).send([]);
@@ -94,16 +117,20 @@ async function run() {
     // Get all applications for a specific job
     app.get("/applications/job/:id", async (req, res) => {
       const job_id = req.params.id;
-      console.log(job_id);
-      const query = { jobId: job_id };
+      const query = { jobId: new ObjectId(job_id.toString()) };
+      // ✔ FIXED
       const result = await applicationsCollection.find(query).toArray();
       res.send(result);
     });
 
     // Submit a new job application
     app.post("/applications", async (req, res) => {
-      const application = req.body
-      console.log(application);
+      const application = {
+        ...req.body,
+        jobId: new ObjectId(req.body.jobId), // FIXED (convert string → ObjectId)
+        status: "Pending",
+      };
+
       const result = await applicationsCollection.insertOne(application);
       res.send(result);
     });
@@ -136,7 +163,8 @@ async function run() {
       // bad way to aggregate data
       for (const application of result) {
         const jobId = application.jobId;
-        const jobQuery = { _id: new ObjectId(jobId) };
+        const jobQuery = { _id: new ObjectId(jobId.toString()) };
+
         const job = await jobsCollection.findOne(jobQuery);
         application.company = job.company;
         application.title = job.title;
