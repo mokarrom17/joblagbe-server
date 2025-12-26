@@ -2,11 +2,16 @@ const express = require("express");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const cors = require("cors");
 const app = express();
+const jwt = require("jsonwebtoken");
+const cookieParser = require("cookie-parser");
 const port = process.env.PORT || 3000;
 require("dotenv").config();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin:['http://localhost:5173'],
+  credentials: true
+}));
 app.use(express.json());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.olgdgso.mongodb.net/?appName=Cluster0;`;
@@ -31,6 +36,18 @@ async function run() {
       .collection("applications");
     const blogsCollection = client.db("JObLagvbe").collection("blogs");
     // =============================================================================================
+    // jwt token related api
+    app.post('/jwt', async (req, res) => {
+      const userData = req.body
+      const token = jwt.sign(userData, process.env.JWT_ACCESS_SECRET, {expiresIn: "1h"})
+      // set token in the cookies
+      res.cookie('token', token , {
+        httpOnly:true,
+        secure : false
+      })
+      res.send({success: true})
+    })
+    // ==============================================================================================
     // jobs api
     app.get("/jobs", async (req, res) => {
       const email = req.query.email;
@@ -106,7 +123,6 @@ async function run() {
     // Add a new job to the database
     app.post("/jobs", async (req, res) => {
       const newJob = req.body;
-      console.log(newJob);
       const result = await jobsCollection.insertOne(newJob);
       res.send(result);
     });
@@ -156,6 +172,9 @@ async function run() {
     // Get all applications submitted by a specific user
     app.get("/applications", async (req, res) => {
       const email = req.query.email;
+
+      console.log('inside applications api',req.cookies);
+
       const query = {
         applicant: email,
       };
@@ -193,19 +212,18 @@ async function run() {
 
     // BlogDetails by Id
     app.get("/blogs/:id", async (req, res) => {
-      try{
+      try {
         const id = req.params.id;
-        const blog = await blogsCollection.findOne({_id: new ObjectId(id)});
+        const blog = await blogsCollection.findOne({ _id: new ObjectId(id) });
 
-        if(!blog){
-          return res.status(404).send({message : "Blog not found"})
+        if (!blog) {
+          return res.status(404).send({ message: "Blog not found" });
         }
         res.send(blog);
+      } catch (error) {
+        res.status(500).send({ error: error.message });
       }
-      catch(error){
-        res.status(500).send({error: error.message})
-      }
-    })
+    });
 
     // ==================================================================================
     // MongoDB Health Check

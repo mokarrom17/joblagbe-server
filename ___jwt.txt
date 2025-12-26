@@ -1,0 +1,31 @@
+1.simple but the best way
+2.from client side sent information
+3.generate token jwt.sign()
+4.On the client side set token to the localstorage.
+
+//Using http only cookies
+1.set cors middleware to allow 
+
+//Best way of the handle jwt cookies for our client side
+1. from client side send the information(email, better : firebase er auth token) to generate token
+2.on the server side, accept user information and if needed validate it 
+3.generate token in the server side Using secret an expiresIn
+
+//set the cookies
+4.while calling the api tell to use withCredential
+axios.post('http://localhost:3000/jwt',userData, {
+            withCredentials: true
+          })
+
+5.In the cors setting set credentials and origin
+app.use(cors({
+  origin:['http://localhost:5173'],
+  credentials: true
+}));
+
+6. after generating the token set it to the cookies with some option
+res.cookie('token', token , {
+        httpOnly:true,
+        secure : false
+      })
+      res.send({success: true})
