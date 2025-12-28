@@ -29,3 +29,5 @@ res.cookie('token', token , {
         secure : false
       })
       res.send({success: true})
+
+7.use cookieParser as middleware
