@@ -17,6 +17,8 @@ axios.post('http://localhost:3000/jwt',userData, {
             withCredentials: true
           })
 
+or for fetch add option credentials : 'include'
+
 5.In the cors setting set credentials and origin
 app.use(cors({
   origin:['http://localhost:5173'],
@@ -30,4 +32,9 @@ res.cookie('token', token , {
       })
       res.send({success: true})
 
-7.use cookieParser as middleware
+7.one time : use cookieParser as middleware
+9.In the client side: if using axios withCredentials : true
+for fetch : credentials include 
+
+------------------------------------------------------------------------------------
+//token verify
