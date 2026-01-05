@@ -17,16 +17,16 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 
-const logger = (req, res, next) => {
-  console.log("inside the logger Middleware");
-  next();
-};
+// const logger = (req, res, next) => {
+//   console.log("inside the logger Middleware");
+//   next();
+// };
 
-const verifyToken = (req, res, next) => {
-  const token = req?.cookies?.token;
-  console.log("cookie in the Middleware :", token);
-  next();
-};
+// const verifyToken = (req, res, next) => {
+//   const token = req?.cookies?.token;
+//   console.log("cookie in the Middleware :", token);
+//   next();
+// };
 
 // MongoDB connection URI
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.olgdgso.mongodb.net/?appName=Cluster0;`;
@@ -40,6 +40,31 @@ const client = new MongoClient(uri, {
   },
 });
 
+// Firebase Admin SDK initialization
+const admin = require("firebase-admin");
+const serviceAccount = require("./joblagbe-firebase-admin-key.json");
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
+
+const verifyFirebaseToken = async (req, res, next) => {
+  const authHeader = req.headers?.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).send({ message: "unauthorized access" });
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  try {
+    const decoded = await admin.auth().verifyIdToken(token);
+    console.log("decoded token", decoded);
+    req.decoded = decoded;
+    next();
+  } catch (error) {
+    return res.status(401).send({ message: "unauthorized access" });
+  }
+};
+
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
@@ -52,34 +77,38 @@ async function run() {
     const blogsCollection = client.db("JObLagvbe").collection("blogs");
     // =============================================================================================
     // jwt token related api
-    app.post("/jwt", async (req, res) => {
-      const userData = req.body;
-      const token = jwt.sign(userData, process.env.JWT_ACCESS_SECRET, {
-        expiresIn: "1h",
-      });
-      // set token in the cookies
-      res.cookie("token", token, {
-        httpOnly: true,
-        secure: false,
-      });
-      res.send({ success: true });
-    });
+    // app.post("/jwt", async (req, res) => {
+    //   const userData = req.body;
+    //   const token = jwt.sign(userData, process.env.JWT_ACCESS_SECRET, {
+    //     expiresIn: "1h",
+    //   });
+    //   // set token in the cookies
+    //   res.cookie("token", token, {
+    //     httpOnly: true,
+    //     secure: false,
+    //   });
+    //   res.send({ success: true });
+    // });
     // ==============================================================================================
     // jobs api
-    app.get("/jobs", async (req, res) => {
-      const email = req.query.email;
-      const query = {};
-      if (email) {
-        query["company.hr_email"] = email;
-      }
-      const cursor = jobsCollection.find(query);
-      const result = await cursor.toArray();
-      res.send(result);
-    });
+    // app.get("/jobs", async (req, res) => {
+    //   const email = req.query.email;
+    //   const query = {};
+    //   if (email) {
+    //     query["company.hr_email"] = email;
+    //   }
+    //   const cursor = jobsCollection.find(query);
+    //   const result = await cursor.toArray();
+    //   res.send(result);
+    // });
     //  Get all jobs (optionally filtered by HR email)
-    app.get("/jobsByEmailAddress", async (req, res) => {
+    app.get("/jobsByEmailAddress", verifyFirebaseToken, async (req, res) => {
       try {
         const email = req.query.email;
+
+        if (email !== req.decoded.email) {
+          return res.status(403).send({ message: " forbidden access" });
+        }
 
         const jobs = await jobsCollection
           .aggregate([
@@ -187,29 +216,38 @@ async function run() {
     // ==============================================================================================
 
     // Get all applications submitted by a specific user
-    app.get("/applications", logger, verifyToken, async (req, res) => {
-      const email = req.query.email;
+    app.get(
+      "/applications",
+      verifyFirebaseToken,
 
-      // console.log("inside applications api", req.cookies);
+      async (req, res) => {
+        const email = req.query.email;
 
-      const query = {
-        applicant: email,
-      };
-      const result = await applicationsCollection.find(query).toArray();
+        if (email !== req.decoded.email) {
+          return res.status(403).message({ message: "forbidden access" });
+        }
 
-      // bad way to aggregate data
-      for (const application of result) {
-        const jobId = application.jobId;
-        const jobQuery = { _id: new ObjectId(jobId.toString()) };
+        // console.log("inside applications api", req.headers);
 
-        const job = await jobsCollection.findOne(jobQuery);
-        application.company = job.company;
-        application.title = job.title;
-        application.company_logo = job.company_logo;
+        const query = {
+          applicant: email,
+        };
+        const result = await applicationsCollection.find(query).toArray();
+
+        // bad way to aggregate data
+        for (const application of result) {
+          const jobId = application.jobId;
+          const jobQuery = { _id: new ObjectId(jobId.toString()) };
+
+          const job = await jobsCollection.findOne(jobQuery);
+          application.company = job.company;
+          application.title = job.title;
+          application.company_logo = job.company_logo;
+        }
+
+        res.send(result);
       }
-
-      res.send(result);
-    });
+    );
 
     // ===================================================================
     // BLOGS API
