@@ -65,6 +65,13 @@ const verifyFirebaseToken = async (req, res, next) => {
   }
 };
 
+const veryTokenEmail = async (req, res, next) => {
+  if (req.query.email !== req.decoded.email) {
+    return res.status(403).send({ message: " forbidden access" });
+  }
+  next();
+};
+
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
@@ -102,53 +109,54 @@ async function run() {
     //   res.send(result);
     // });
     //  Get all jobs (optionally filtered by HR email)
-    app.get("/jobsByEmailAddress", verifyFirebaseToken, async (req, res) => {
-      try {
-        const email = req.query.email;
+    app.get(
+      "/jobsByEmailAddress",
+      verifyFirebaseToken,
+      veryTokenEmail,
+      async (req, res) => {
+        try {
+          const email = req.query.email;
 
-        if (email !== req.decoded.email) {
-          return res.status(403).send({ message: " forbidden access" });
+          const jobs = await jobsCollection
+            .aggregate([
+              {
+                $match: {
+                  "company.hr_email": email,
+                },
+              },
+              {
+                $lookup: {
+                  from: "applications",
+                  localField: "_id",
+                  foreignField: "jobId",
+                  as: "applications",
+                },
+              },
+              {
+                $addFields: {
+                  application_count: { $size: "$applications" },
+                },
+              },
+              {
+                $project: {
+                  title: 1,
+                  jobLevel: 1,
+                  jobType: 1,
+                  deadline: 1,
+                  company: 1,
+                  application_count: 1,
+                },
+              },
+            ])
+            .toArray();
+
+          res.send(jobs);
+        } catch (error) {
+          console.error("jobsByEmailAddress ERROR:", error);
+          res.status(500).send([]);
         }
-
-        const jobs = await jobsCollection
-          .aggregate([
-            {
-              $match: {
-                "company.hr_email": email,
-              },
-            },
-            {
-              $lookup: {
-                from: "applications",
-                localField: "_id",
-                foreignField: "jobId",
-                as: "applications",
-              },
-            },
-            {
-              $addFields: {
-                application_count: { $size: "$applications" },
-              },
-            },
-            {
-              $project: {
-                title: 1,
-                jobLevel: 1,
-                jobType: 1,
-                deadline: 1,
-                company: 1,
-                application_count: 1,
-              },
-            },
-          ])
-          .toArray();
-
-        res.send(jobs);
-      } catch (error) {
-        console.error("jobsByEmailAddress ERROR:", error);
-        res.status(500).send([]);
       }
-    });
+    );
 
     // Could be done
     /*app.get("/jobsByEmailAddress", async (req, res) =>{
@@ -219,13 +227,10 @@ async function run() {
     app.get(
       "/applications",
       verifyFirebaseToken,
+      veryTokenEmail,
 
       async (req, res) => {
         const email = req.query.email;
-
-        if (email !== req.decoded.email) {
-          return res.status(403).message({ message: "forbidden access" });
-        }
 
         // console.log("inside applications api", req.headers);
 
