@@ -87,9 +87,7 @@ const veryTokenEmail = async (req, res, next) => {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    if (!client.topology?.isConnected()) {
-      await client.connect();
-    }
+    await client.connect();
 
     const jobsCollection = client.db("JObLagvbe").collection("jobs");
     const applicationsCollection = client
