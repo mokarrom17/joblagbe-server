@@ -5,7 +5,7 @@ const app = express();
 const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
 const port = process.env.PORT || 3000;
-require("dotenv").config();
+// require("dotenv").config();
 
 // Middleware
 app.use(
