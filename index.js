@@ -50,9 +50,13 @@ const client = new MongoClient(uri, {
 
 // Firebase Admin SDK initialization
 const admin = require("firebase-admin");
-const serviceAccount = require("./joblagbe-firebase-admin-key.json");
+// const serviceAccount = require("./joblagbe-firebase-admin-key.json");
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
+  credential: admin.credential.cert({
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+    privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
+  }),
 });
 
 const verifyFirebaseToken = async (req, res, next) => {
@@ -83,7 +87,9 @@ const veryTokenEmail = async (req, res, next) => {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    if (!client.topology?.isConnected()) {
+      await client.connect();
+    }
 
     const jobsCollection = client.db("JObLagvbe").collection("jobs");
     const applicationsCollection = client
