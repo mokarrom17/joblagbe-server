@@ -10,10 +10,18 @@ require("dotenv").config();
 // Middleware
 app.use(
   cors({
-    origin: ["http://localhost:5173"],
+    origin: [
+      "http://localhost:5173",
+      "https://joblagbe-b552e.web.app",
+      "https://joblagbe-b552e.firebaseapp.com",
+    ],
     credentials: true,
   })
 );
+
+// handle preflight
+app.options("*", cors());
+
 app.use(express.json());
 app.use(cookieParser());
 
@@ -98,16 +106,16 @@ async function run() {
     // });
     // ==============================================================================================
     // jobs api
-    // app.get("/jobs", async (req, res) => {
-    //   const email = req.query.email;
-    //   const query = {};
-    //   if (email) {
-    //     query["company.hr_email"] = email;
-    //   }
-    //   const cursor = jobsCollection.find(query);
-    //   const result = await cursor.toArray();
-    //   res.send(result);
-    // });
+    app.get("/jobs", async (req, res) => {
+      const email = req.query.email;
+      const query = {};
+      if (email) {
+        query["company.hr_email"] = email;
+      }
+      const cursor = jobsCollection.find(query);
+      const result = await cursor.toArray();
+      res.send(result);
+    });
     //  Get all jobs (optionally filtered by HR email)
     app.get(
       "/jobsByEmailAddress",
@@ -290,10 +298,10 @@ async function run() {
     // ===================================================================================
 
     // Verify MongoDB connection
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
@@ -316,6 +324,7 @@ app.get("/", (req, res) => {
 // ======================================================================================
 
 // Start listening on defined port
-app.listen(port, () => {
-  console.log(`Career Code server is running on port ${port}`);
-});
+// app.listen(port, () => {
+//   console.log(`Career Code server is running on port ${port}`);
+// });
+module.exports = app;
