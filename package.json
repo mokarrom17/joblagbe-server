@@ -18,5 +18,16 @@
     "firebase-admin": "^13.6.0",
     "jsonwebtoken": "^9.0.3",
     "mongodb": "^7.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mokarrom17/joblagbe-server.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mokarrom17/joblagbe-server/issues"
+  },
+  "homepage": "https://github.com/mokarrom17/joblagbe-server#readme",
+  "devDependencies": {
+    "nodemon": "^3.1.11"
   }
 }

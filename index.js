@@ -5,22 +5,15 @@ const app = express();
 const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
 const port = process.env.PORT || 3000;
-// require("dotenv").config();
+require("dotenv").config();
 
 // Middleware
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "https://joblagbe-b552e.web.app",
-      "https://joblagbe-b552e.firebaseapp.com",
-    ],
+    origin: ["http://localhost:5173"],
     credentials: true,
   })
 );
-
-// handle preflight
-
 app.use(express.json());
 app.use(cookieParser());
 
@@ -49,13 +42,9 @@ const client = new MongoClient(uri, {
 
 // Firebase Admin SDK initialization
 const admin = require("firebase-admin");
-// const serviceAccount = require("./joblagbe-firebase-admin-key.json");
+const serviceAccount = require("./joblagbe-firebase-admin-key.json");
 admin.initializeApp({
-  credential: admin.credential.cert({
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, "\n"),
-  }),
+  credential: admin.credential.cert(serviceAccount),
 });
 
 const verifyFirebaseToken = async (req, res, next) => {
@@ -301,10 +290,10 @@ async function run() {
     // ===================================================================================
 
     // Verify MongoDB connection
-    // await client.db("admin").command({ ping: 1 });
-    // console.log(
-    //   "Pinged your deployment. You successfully connected to MongoDB!"
-    // );
+    await client.db("admin").command({ ping: 1 });
+    console.log(
+      "Pinged your deployment. You successfully connected to MongoDB!"
+    );
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
@@ -327,7 +316,6 @@ app.get("/", (req, res) => {
 // ======================================================================================
 
 // Start listening on defined port
-// app.listen(port, () => {
-//   console.log(`Career Code server is running on port ${port}`);
-// });
-module.exports = app;
+app.listen(port, () => {
+  console.log(`Career Code server is running on port ${port}`);
+});
